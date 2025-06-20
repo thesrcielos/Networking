@@ -10,6 +10,24 @@
 <button onclick="enviarUrl()">Enviar</button>
 <p id="respuesta"></p>
 
-<script src="/js/script.js"></script>
+<script>
+        function enviarUrl() {
+        const url = document.getElementById("urlInput").value;
+        fetch("http://localhost:8080/api/enviar-url", {
+        method: "POST",
+        headers: {
+        "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ url: url })
+        })
+        .then(response => response.json())
+        .then(data => {
+        document.getElementById("respuesta").innerText = data.mensaje;
+        })
+        .catch(error => {
+        console.error("Error:", error);
+        });
+        }
+</script>
 </body>
 </html>

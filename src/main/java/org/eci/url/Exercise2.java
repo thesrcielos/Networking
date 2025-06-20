@@ -6,6 +6,7 @@ import java.net.MalformedURLException;
 
 @RestController
 @RequestMapping("/api")
+@CrossOrigin
 public class Exercise2 {
 
     @PostMapping("/enviar-url")

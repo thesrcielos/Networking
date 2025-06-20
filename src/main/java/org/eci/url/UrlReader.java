@@ -23,4 +23,28 @@ public class UrlReader {
         }
         return "Succesfully created page " + url.toString();
     }
+
+    public static String readUrlHtml(String path) {
+        URL url;
+        try {
+             url = new URL(path);
+        } catch (MalformedURLException e) {
+            System.err.println(e.getMessage());
+            return "";
+        }
+
+        StringBuilder res= new StringBuilder();
+        try (BufferedReader reader
+                     = new BufferedReader(new InputStreamReader(url.openStream()));
+        ) {
+
+            String inputLine = null;
+            while ((inputLine = reader.readLine()) != null) {
+                res.append(inputLine);
+            }
+        } catch (IOException x) {
+            return x.getMessage();
+        }
+        return res.toString();
+    }
 }
