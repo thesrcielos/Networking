@@ -4,53 +4,84 @@ import org.eci.url.UrlReader;
 
 import java.io.*;
 import java.net.*;
+import java.util.concurrent.*;
 
 public class ServerSockets {
+
+    private static final int PORT = 8080;
+    private static final int THREAD_POOL_SIZE = 10;
+
     public static void main(String[] args) {
-        try (ServerSocket serverSocket = new ServerSocket(8080)) {
-            System.out.println("Esperando conexiones...");
+        ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+            System.out.println("Servidor escuchando en el puerto " + PORT + "...");
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                System.out.println("Cliente conectado");
-
-                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                OutputStream out = clientSocket.getOutputStream();
-
-                String requestLine = in.readLine();
-                System.out.println("Petición: " + requestLine);
-
-                String header;
-                int contentLength = 0;
-                while ((header = in.readLine()) != null && !header.isEmpty()) {
-                    System.out.println("Header: " + header);
-                    if (header.startsWith("Content-Length:")) {
-                        contentLength = Integer.parseInt(header.split(":")[1].trim());
-                    }
-                }
-
-                // Leer el cuerpo de la solicitud
-                char[] body = new char[contentLength];
-                in.read(body);
-                String url = new String(body);
-                System.out.println(body);
-                String response= UrlReader.readUrlHtml(url);
-                // Preparar respuesta HTTP
-                String httpResponse = "HTTP/1.1 200 OK\r\n"
-                        + "Content-Type: text/html\r\n"
-                        + "Content-Length: " + response.length() + "\r\n"
-                        + "Access-Control-Allow-Origin: *\r\n"
-                        + "\r\n"
-                        + response;
-
-                out.write(httpResponse.getBytes());
-                out.flush();
-
-                clientSocket.close();
+                pool.submit(() -> handleClient(clientSocket));
             }
 
         } catch (IOException e) {
             e.printStackTrace();
+        }
+
+        pool.shutdown();
+    }
+
+    private static void handleClient(Socket clientSocket) {
+        try (
+                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                OutputStream out = clientSocket.getOutputStream()
+        ) {
+            String requestLine = in.readLine();
+            System.out.println("Petición: " + requestLine);
+
+            String header;
+            int contentLength = 0;
+            String cookie = null;
+
+            while ((header = in.readLine()) != null && !header.isEmpty()) {
+                if (header.startsWith("Content-Length:")) {
+                    contentLength = Integer.parseInt(header.split(":")[1].trim());
+                }
+                if (header.startsWith("Cookie:")) {
+                    cookie = header.split(":", 2)[1].trim();
+                }
+            }
+
+            char[] body = new char[contentLength];
+            in.read(body);
+            String url = new String(body).trim();
+
+            String html = UrlReader.readUrlHtml(url);
+
+            FileWriter fw = new FileWriter("page-" + Thread.currentThread().getId() + ".html");
+            fw.write(html);
+            fw.close();
+
+            StringBuilder responseHeader = new StringBuilder();
+            responseHeader.append("HTTP/1.1 200 OK\r\n");
+            responseHeader.append("Content-Type: text/html\r\n");
+            responseHeader.append("Content-Length: ").append(html.length()).append("\r\n");
+            responseHeader.append("Access-Control-Allow-Origin: *\r\n");
+            
+            if (cookie == null) {
+                responseHeader.append("Set-Cookie: user=usuario").append(Thread.currentThread().getId()).append("\r\n");
+            }
+
+            responseHeader.append("\r\n");
+
+            out.write(responseHeader.toString().getBytes());
+            out.write(html.getBytes());
+            out.flush();
+
+        } catch (IOException e) {
+            System.err.println("Error en cliente: " + e.getMessage());
+        } finally {
+            try {
+                clientSocket.close();
+            } catch (IOException ignore) {}
         }
     }
 }

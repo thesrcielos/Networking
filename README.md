@@ -100,6 +100,8 @@ aplicativo debe solicitar una dirección IP y un puerto antes de conectarse con 
 cliente que se desea. Igualmente, debe solicitar un puerto antes de iniciar para
 que publique el objeto que recibe los llamados remotos en dicho puerto.
 
+### Diseño
+![design](assets/img.png)
 Ejemplo de ejecución.
 
 Ejecutamos compilamos las clases en rmi y ejecutamos **rmi/ChatImpl** en distintas terminales
